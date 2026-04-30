@@ -37,7 +37,38 @@ public class Calendar extends JPanel {
 		date.setForeground(Color.decode("#0ecf78"));
 		top.add(date, BorderLayout.CENTER);
 		
-		JLabel right = new JLabel(new ImageIcon("pics/right.png"));
+		JLabel right = new JLabel(">");
+		right.setHorizontalAlignment(JLabel.CENTER);
+		right.setFont(new Font("Helvetica", Font.BOLD, 30));
+		right.setForeground(Color.decode("#0ecf78"));
+		right.setCursor(new Cursor(Cursor.HAND_CURSOR));
+		right.addMouseListener(new MouseListener() {
+		    @Override public void mouseReleased(MouseEvent e) {}
+		    @Override public void mousePressed(MouseEvent e) {}
+		    @Override public void mouseExited(MouseEvent e) {}
+		    @Override public void mouseEntered(MouseEvent e) {}
+
+		    @Override
+		    public void mouseClicked(MouseEvent e) {
+		        mainPanel.removeAll();
+
+		        int newYear = year;
+		        int newMonth = month + 1;
+
+		        if (newMonth == 13) {
+		            newMonth = 1;
+		            newYear++;
+		        }
+
+		        LocalDate newSelectedDay = LocalDate.of(newYear, newMonth, 1);
+
+		        mainPanel.add(new Calendar(newYear, newMonth, newSelectedDay, mainPanel, database));
+		        mainPanel.add(new Events(newSelectedDay, database, mainPanel));
+		        mainPanel.revalidate();
+		        mainPanel.repaint();
+		    }
+		});
+		top.add(right, BorderLayout.EAST);
 		right.setCursor(new Cursor(Cursor.HAND_CURSOR));
 		right.addMouseListener(new MouseListener() {
 			@Override
@@ -50,19 +81,58 @@ public class Calendar extends JPanel {
 			public void mouseEntered(MouseEvent e) {}
 			@Override
 			public void mouseClicked(MouseEvent e) {
-				mainPanel.removeAll();
-				if (month!=12) {
-					mainPanel.add(new Calendar(year, month+1, selectedDay, mainPanel, database));
-				} else {
-					mainPanel.add(new Calendar(year+1, 1, selectedDay, mainPanel, database));
-				}
-				mainPanel.add(new Events(selectedDay, database, mainPanel));
-				mainPanel.revalidate();
+			    mainPanel.removeAll();
+
+			    int newYear = year;
+			    int newMonth = month + 1;
+
+			    if (newMonth == 13) {
+			        newMonth = 1;
+			        newYear++;
+			    }
+
+			    LocalDate newSelectedDay = LocalDate.of(newYear, newMonth, 1);
+
+			    mainPanel.add(new Calendar(newYear, newMonth, newSelectedDay, mainPanel, database));
+			    mainPanel.add(new Events(newSelectedDay, database, mainPanel));
+			    mainPanel.revalidate();
+			    mainPanel.repaint();
 			}
 		});
 		top.add(right, BorderLayout.EAST);
 		
-		JLabel left = new JLabel(new ImageIcon("pics/left.png"));
+		JLabel left = new JLabel("<");
+		left.setHorizontalAlignment(JLabel.CENTER);
+		left.setFont(new Font("Helvetica", Font.BOLD, 30));
+		left.setForeground(Color.decode("#0ecf78"));
+		left.setCursor(new Cursor(Cursor.HAND_CURSOR));
+		left.addMouseListener(new MouseListener() {
+		    @Override public void mouseReleased(MouseEvent e) {}
+		    @Override public void mousePressed(MouseEvent e) {}
+		    @Override public void mouseExited(MouseEvent e) {}
+		    @Override public void mouseEntered(MouseEvent e) {}
+
+		    @Override
+		    public void mouseClicked(MouseEvent e) {
+		        mainPanel.removeAll();
+
+		        int newYear = year;
+		        int newMonth = month - 1;
+
+		        if (newMonth == 0) {
+		            newMonth = 12;
+		            newYear--;
+		        }
+
+		        LocalDate newSelectedDay = LocalDate.of(newYear, newMonth, 1);
+
+		        mainPanel.add(new Calendar(newYear, newMonth, newSelectedDay, mainPanel, database));
+		        mainPanel.add(new Events(newSelectedDay, database, mainPanel));
+		        mainPanel.revalidate();
+		        mainPanel.repaint();
+		    }
+		});
+		top.add(left, BorderLayout.WEST);
 		left.setCursor(new Cursor(Cursor.HAND_CURSOR));
 		left.addMouseListener(new MouseListener() {
 			@Override
@@ -75,14 +145,22 @@ public class Calendar extends JPanel {
 			public void mouseEntered(MouseEvent e) {}
 			@Override
 			public void mouseClicked(MouseEvent e) {
-				mainPanel.removeAll();
-				if (month!=1) {
-					mainPanel.add(new Calendar(year, month-1, selectedDay, mainPanel, database));
-				} else {
-					mainPanel.add(new Calendar(year-1, 12, selectedDay, mainPanel, database));
-				}
-				mainPanel.add(new Events(selectedDay, database, mainPanel));
-				mainPanel.revalidate();
+			    mainPanel.removeAll();
+
+			    int newYear = year;
+			    int newMonth = month - 1;
+
+			    if (newMonth == 0) {
+			        newMonth = 12;
+			        newYear--;
+			    }
+
+			    LocalDate newSelectedDay = LocalDate.of(newYear, newMonth, 1);
+
+			    mainPanel.add(new Calendar(newYear, newMonth, newSelectedDay, mainPanel, database));
+			    mainPanel.add(new Events(newSelectedDay, database, mainPanel));
+			    mainPanel.revalidate();
+			    mainPanel.repaint();
 			}
 		});
 		top.add(left, BorderLayout.WEST);
