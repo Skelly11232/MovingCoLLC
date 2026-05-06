@@ -718,202 +718,264 @@ public class Database {
         return result.toString();
     }
 
-    public String getTruckUsageReport() {
+    public String getEmployeeCurrentJobs() {
         StringBuilder result = new StringBuilder();
-        result.append("TRUCK USAGE REPORT\n\n");
+        result.append("Current Sceduled Jobs\n\n");
 
         String sql =
-            "SELECT t.truck_id, t.plate_num, t.make, t.model, t.status, " +
-            "COUNT(jt.job_id) AS jobs_assigned, " +
-            "SUM(jt.miles) AS total_miles, " +
-            "SUM(jt.fuel_cost) AS total_fuel_cost " +
-            "FROM Truck t " +
-            "LEFT JOIN Job_Truck jt ON t.truck_id = jt.truck_id " +
-            "GROUP BY t.truck_id, t.plate_num, t.make, t.model, t.status " +
-            "ORDER BY jobs_assigned DESC;";
+            "SELECT job_status, COUNT(job_id) AS total_jobs " +
+            "FROM Job " +
+            "WHERE job_status LIKE '%scheduled%' " +
+            "GROUP BY job_status " +
+            "ORDER BY total_jobs DESC " +
+            "LIMIT 5;";
 
-        try (PreparedStatement ps = connection.prepareStatement(sql)) {
-            ResultSet rs = ps.executeQuery();
+        try (PreparedStatement ps = connection.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
 
             while (rs.next()) {
-                result.append("Truck #").append(rs.getInt("truck_id"))
-                      .append(" | ").append(rs.getString("plate_num"))
-                      .append(" | ").append(rs.getString("make")).append(" ")
-                      .append(rs.getString("model"))
-                      .append(" | Status: ").append(rs.getString("status"))
-                      .append(" | Jobs: ").append(rs.getInt("jobs_assigned"))
-                      .append(" | Miles: ").append(rs.getDouble("total_miles"))
-                      .append(" | Fuel: $").append(rs.getDouble("total_fuel_cost"))
+                result.append("Status: ")
+                      .append(rs.getString("job_status"))
+                      .append(" | Total Jobs: ")
+                      .append(rs.getInt("total_jobs"))
                       .append("\n");
             }
 
         } catch (SQLException e) {
             e.printStackTrace();
-            return "Error running truck usage query.";
+            return "Error running employee current jobs query.";
         }
 
         return result.toString();
     }
 
-    public String getRepeatCustomers() {
+    public String getTruckUsed() {
         StringBuilder result = new StringBuilder();
-        result.append("REPEAT CUSTOMERS\n\n");
+        result.append("Truck Used\n\n");
 
         String sql =
-            "SELECT c.customer_id, c.first_name, c.last_name, c.phone, c.email, " +
-            "COUNT(j.job_id) AS job_count " +
-            "FROM Customer c " +
-            "JOIN Job j ON c.customer_id = j.customer_id " +
-            "GROUP BY c.customer_id, c.first_name, c.last_name, c.phone, c.email " +
-            "HAVING COUNT(j.job_id) > 1 " +
-            "ORDER BY job_count DESC;";
+            "SELECT j.job_id, c.first_name, c.last_name, t.make " +
+            "FROM Job j " +
+            "LEFT JOIN Customer c ON j.customer_id = c.customer_id " +
+            "LEFT JOIN Job_Truck jt ON j.job_id = jt.job_id " +
+            "LEFT JOIN Truck t ON jt.truck_id = t.truck_id;";
 
         try (PreparedStatement ps = connection.prepareStatement(sql)) {
             ResultSet rs = ps.executeQuery();
 
             while (rs.next()) {
-                result.append(rs.getInt("customer_id")).append(" | ")
+                result.append("Job #").append(rs.getInt("job_id"))
+                      .append(" | Customer: ")
                       .append(rs.getString("first_name")).append(" ")
                       .append(rs.getString("last_name"))
-                      .append(" | Jobs: ").append(rs.getInt("job_count"))
-                      .append(" | ").append(rs.getString("phone"))
+                      .append(" | Truck: ")
+                      .append(rs.getString("make"))
+                      .append("\n");
+            }
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return "Error running truck used query.";
+        }
+
+        return result.toString();
+    }
+
+    public String getCustomersThatHaveJobs() {
+        StringBuilder result = new StringBuilder();
+        result.append("Customers That Have Jobs\n\n");
+
+        String sql =
+            "SELECT customer_id, first_name, last_name, email " +
+            "FROM Customer " +
+            "WHERE customer_id IN ( " +
+            "    SELECT customer_id " +
+            "    FROM Job" +
+            ");";
+
+        try (PreparedStatement ps = connection.prepareStatement(sql)) {
+            ResultSet rs = ps.executeQuery();
+
+            while (rs.next()) {
+                result.append("Customer #").append(rs.getInt("customer_id"))
+                      .append(" | ")
+                      .append(rs.getString("first_name")).append(" ")
+                      .append(rs.getString("last_name"))
                       .append(" | ").append(rs.getString("email"))
                       .append("\n");
             }
 
         } catch (SQLException e) {
             e.printStackTrace();
-            return "Error running repeat customer query.";
+            return "Error running customers that have jobs query.";
         }
 
         return result.toString();
     }
 
-    public String getEstimateAccuracyReport() {
+    public String getNumOfCUstomersByZIP() {
         StringBuilder result = new StringBuilder();
-        result.append("ESTIMATED HOURS VS ACTUAL HOURS\n\n");
+        result.append("CUSTOMERS BY ZIP\n\n");
 
         String sql =
-            "SELECT job_id, move_date, estimated_hours, actual_hours, " +
-            "(actual_hours - estimated_hours) AS hour_difference " +
-            "FROM Job " +
-            "WHERE actual_hours IS NOT NULL " +
-            "ORDER BY ABS(actual_hours - estimated_hours) DESC;";
+            "SELECT Customer.billing_zip AS billingZip, COUNT(Customer.customer_id) AS countCustomers " +
+            "FROM Customer " +
+            "JOIN Quote ON Customer.customer_id = Quote.customer_id " +
+            "WHERE Quote.quoted_hourly_rate > 150 " +
+            "GROUP BY Customer.billing_zip " +
+            "ORDER BY COUNT(Customer.customer_id) DESC;";
 
         try (PreparedStatement ps = connection.prepareStatement(sql)) {
             ResultSet rs = ps.executeQuery();
 
             while (rs.next()) {
+                result.append("ZIP: ").append(rs.getString("billingZip"))
+                      .append(" | Customers: ").append(rs.getInt("countCustomers"))
+                      .append("\n");
+            }
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return "Error running customers by ZIP query.";
+        }
+
+        return result.toString();
+    }
+
+    public String getEstimatedCostPerCrewSize() {
+        StringBuilder result = new StringBuilder();
+        result.append("ESTIMATED COST PER CREW SIZE\n\n");
+
+        String sql =
+            "SELECT crew_size, AVG(estimated_cost) AS avg_estimated_cost " +
+            "FROM Quote " +
+            "GROUP BY crew_size " +
+            "HAVING AVG(estimated_cost) > 1000;";
+
+        try (PreparedStatement ps = connection.prepareStatement(sql)) {
+            ResultSet rs = ps.executeQuery();
+
+            while (rs.next()) {
+                result.append("Crew Size: ").append(rs.getInt("crew_size"))
+                      .append(" | Avg Estimated Cost: ").append(rs.getDouble("avg_estimated_cost"))
+                      .append("\n");
+            }
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return "Error running estimated cost per crew size query.";
+        }
+
+        return result.toString();
+    }
+
+    public String getCustomersWithCompleted() {
+        StringBuilder result = new StringBuilder();
+        result.append("CUSTOMERS WITH COMPLETED JOBS\n\n");
+
+        String sql =
+            "SELECT first_name, last_name " +
+            "FROM Customer " +
+            "WHERE customer_id IN ( " +
+            "    SELECT customer_id " +
+            "    FROM Job " +
+            "    WHERE job_status = 'Completed' " +
+            ");";
+
+        try (PreparedStatement ps = connection.prepareStatement(sql)) {
+            ResultSet rs = ps.executeQuery();
+
+            while (rs.next()) {
+                result.append(rs.getString("first_name")).append(" ")
+                      .append(rs.getString("last_name"))
+                      .append("\n");
+            }
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return "Error running customers with completed jobs query.";
+        }
+
+        return result.toString();
+    }
+    
+    public String getFindSFoley() {
+        StringBuilder result = new StringBuilder();
+        result.append("SAMANTHA FOLEY JOB DETAILS\n\n");
+
+        String sql =
+            "SELECT c.customer_id, c.first_name, c.last_name, c.phone, c.email, " +
+            "j.job_id, j.move_date, j.start_time, j.job_status, j.crew_size, j.hourly_rate, " +
+            "q.quote_id, q.quote_date, q.estimated_hours, q.estimated_cost, q.quoted_hourly_rate, " +
+            "t.truck_id, t.make, t.model, t.plate_num, " +
+            "GROUP_CONCAT(CONCAT(e.first_name, ' ', e.last_name, ' (', e.role, ')') SEPARATOR ', ') AS employees " +
+            "FROM Customer c " +
+            "LEFT JOIN Job j ON c.customer_id = j.customer_id " +
+            "LEFT JOIN Quote q ON j.quote_id = q.quote_id " +
+            "LEFT JOIN Job_Truck jt ON j.job_id = jt.job_id " +
+            "LEFT JOIN Truck t ON jt.truck_id = t.truck_id " +
+            "LEFT JOIN Job_Employee je ON j.job_id = je.job_id " +
+            "LEFT JOIN Employee e ON je.employee_id = e.employee_id " +
+            "WHERE c.first_name = 'Samantha' " +
+            "AND c.last_name = 'Foley' " +
+            "GROUP BY c.customer_id, c.first_name, c.last_name, c.phone, c.email, " +
+            "j.job_id, j.move_date, j.start_time, j.job_status, j.crew_size, j.hourly_rate, " +
+            "q.quote_id, q.quote_date, q.estimated_hours, q.estimated_cost, q.quoted_hourly_rate, " +
+            "t.truck_id, t.make, t.model, t.plate_num " +
+            "ORDER BY j.move_date;";
+
+        try (PreparedStatement ps = connection.prepareStatement(sql)) {
+            ResultSet rs = ps.executeQuery();
+
+            while (rs.next()) {
+                result.append("Customer #").append(rs.getInt("customer_id"))
+                      .append(" | ").append(rs.getString("first_name")).append(" ")
+                      .append(rs.getString("last_name"))
+                      .append(" | Phone: ").append(rs.getString("phone"))
+                      .append(" | Email: ").append(rs.getString("email"))
+                      .append("\n");
+
                 result.append("Job #").append(rs.getInt("job_id"))
                       .append(" | Date: ").append(rs.getDate("move_date"))
-                      .append(" | Estimated: ").append(rs.getDouble("estimated_hours"))
-                      .append(" | Actual: ").append(rs.getDouble("actual_hours"))
-                      .append(" | Difference: ").append(rs.getDouble("hour_difference"))
+                      .append(" | Start: ").append(rs.getTime("start_time"))
+                      .append(" | Status: ").append(rs.getString("job_status"))
+                      .append(" | Crew Size: ").append(rs.getInt("crew_size"))
+                      .append(" | Hourly Rate: $").append(rs.getDouble("hourly_rate"))
                       .append("\n");
-            }
 
-        } catch (SQLException e) {
-            e.printStackTrace();
-            return "Error running estimate accuracy query.";
-        }
-
-        return result.toString();
-    }
-
-    public String getEmployeeJobCount() {
-        StringBuilder result = new StringBuilder();
-        result.append("EMPLOYEE JOB COUNT\n\n");
-
-        String sql =
-            "SELECT e.employee_id, e.first_name, e.last_name, e.role, " +
-            "COUNT(je.job_id) AS jobs_worked " +
-            "FROM Employee e " +
-            "LEFT JOIN Job_Employee je ON e.employee_id = je.employee_id " +
-            "GROUP BY e.employee_id, e.first_name, e.last_name, e.role " +
-            "ORDER BY jobs_worked DESC;";
-
-        try (PreparedStatement ps = connection.prepareStatement(sql)) {
-            ResultSet rs = ps.executeQuery();
-
-            while (rs.next()) {
-                result.append(rs.getInt("employee_id")).append(" | ")
-                      .append(rs.getString("first_name")).append(" ")
-                      .append(rs.getString("last_name"))
-                      .append(" | ").append(rs.getString("role"))
-                      .append(" | Jobs Worked: ").append(rs.getInt("jobs_worked"))
-                      .append("\n");
-            }
-
-        } catch (SQLException e) {
-            e.printStackTrace();
-            return "Error running employee job count query.";
-        }
-
-        return result.toString();
-    }
-
-    public String getCancelledJobsReport() {
-        StringBuilder result = new StringBuilder();
-        result.append("CANCELLED JOBS REPORT\n\n");
-
-        String sql =
-            "SELECT j.job_id, j.move_date, c.first_name, c.last_name, j.notes " +
-            "FROM Job j " +
-            "JOIN Customer c ON j.customer_id = c.customer_id " +
-            "WHERE j.job_status = 'Cancelled' " +
-            "ORDER BY j.move_date DESC;";
-
-        try (PreparedStatement ps = connection.prepareStatement(sql)) {
-            ResultSet rs = ps.executeQuery();
-
-            while (rs.next()) {
-                result.append("Job #").append(rs.getInt("job_id"))
-                      .append(" | ").append(rs.getDate("move_date"))
-                      .append(" | ").append(rs.getString("first_name")).append(" ")
-                      .append(rs.getString("last_name"))
-                      .append(" | Notes: ").append(rs.getString("notes"))
-                      .append("\n");
-            }
-
-        } catch (SQLException e) {
-            e.printStackTrace();
-            return "Error running cancelled jobs query.";
-        }
-
-        return result.toString();
-    }
-
-    public String getHighestValueQuotes() {
-        StringBuilder result = new StringBuilder();
-        result.append("HIGHEST VALUE QUOTES\n\n");
-
-        String sql =
-            "SELECT q.quote_id, q.quote_date, c.first_name, c.last_name, " +
-            "q.estimated_cost, q.estimated_hours, q.quoted_hourly_rate " +
-            "FROM Quote q " +
-            "JOIN Customer c ON q.customer_id = c.customer_id " +
-            "ORDER BY q.estimated_cost DESC " +
-            "LIMIT 10;";
-
-        try (PreparedStatement ps = connection.prepareStatement(sql)) {
-            ResultSet rs = ps.executeQuery();
-
-            while (rs.next()) {
                 result.append("Quote #").append(rs.getInt("quote_id"))
-                      .append(" | ").append(rs.getDate("quote_date"))
-                      .append(" | ").append(rs.getString("first_name")).append(" ")
-                      .append(rs.getString("last_name"))
-                      .append(" | Estimated Cost: $").append(rs.getDouble("estimated_cost"))
-                      .append(" | Hours: ").append(rs.getDouble("estimated_hours"))
-                      .append(" | Rate: $").append(rs.getDouble("quoted_hourly_rate"))
+                      .append(" | Quote Date: ").append(rs.getDate("quote_date"))
+                      .append(" | Est. Hours: ").append(rs.getDouble("estimated_hours"))
+                      .append(" | Est. Cost: $").append(rs.getDouble("estimated_cost"))
+                      .append(" | Quoted Rate: $").append(rs.getDouble("quoted_hourly_rate"))
                       .append("\n");
+
+                result.append("Truck: ");
+                if (rs.getObject("truck_id") != null) {
+                    result.append("#").append(rs.getInt("truck_id"))
+                          .append(" | ").append(rs.getString("make"))
+                          .append(" ").append(rs.getString("model"))
+                          .append(" | Plate: ").append(rs.getString("plate_num"));
+                } else {
+                    result.append("No truck assigned");
+                }
+                result.append("\n");
+
+                result.append("Employees: ");
+                if (rs.getString("employees") != null) {
+                    result.append(rs.getString("employees"));
+                } else {
+                    result.append("No employees assigned");
+                }
+                result.append("\n\n");
             }
 
         } catch (SQLException e) {
             e.printStackTrace();
-            return "Error running highest quotes query.";
+            return "Error running Samantha Foley job details query.";
         }
 
         return result.toString();
     }
+    
 }
